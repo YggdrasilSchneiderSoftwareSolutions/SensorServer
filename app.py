@@ -17,20 +17,20 @@ sensor_data_map = {
 
 # Object for holding measurement data
 class BME680_Data:
-    def __init__(self, room, temperature, humidity, pressure, gas, iaq, co2, voc, iaq_accuracy, stab_status):
+    def __init__(self, room, temperature, humidity, pressure, gas, iaq, co2_ppm, voc, iaq_accuracy, stab_status):
         self.room = room
         self.temperature = temperature
         self.humidity = humidity
         self.pressure = pressure
         self.gas = gas
         self.iaq = iaq
-        self.co2 = co2
+        self.co2_ppm = co2_ppm
         self.voc = voc
         self.iaq_accuracy = iaq_accuracy
         self.stab_status = stab_status
     
     # Define air quality. Reference: https://forum.iot-usergroup.de/t/indoor-air-quality-index/416/2
-    def get_indoor_air_quality_text():
+    def get_indoor_air_quality_text(self):
         if self.iaq >= 301:
             iaq_text = "Gefährlich"    
         elif 201 <= self.iaq <= 300:
@@ -49,12 +49,12 @@ class BME680_Data:
         return iaq_text
 
     # Define CO2 level. Reference: https://www.cik-solutions.com/anwendungen/co2-im-innenraum/
-    def get_co2_quality_level_text(co2_ppm):
-        if co2_ppm <= 800:
+    def get_co2_quality_level_text(self):
+        if self.co2_ppm <= 800:
             co2_level_text = "Hoch"
-        elif 800 > co2_ppm <= 1000:
+        elif 800 > self.co2_ppm <= 1000:
             co2_level_text = "Mittel"
-        elif 1000 > co2_ppm <= 1400:
+        elif 1000 > self.co2_ppm <= 1400:
             co2_level_text = "Mäßig"
         else:
             co2_level_text = "Niedrig"
@@ -84,7 +84,7 @@ def on_message(client, userdata, msg):
             json_data['pressure'], 
             json_data['gas'], 
             json_data['iaq'],
-            json_data['co2'], 
+            json_data['co2_ppm'], 
             json_data['voc'], 
             json_data['iaq_accuracy'],
             json_data['stab_status']
@@ -97,28 +97,27 @@ def index():
     version = '1.0'
     return render_template('index.html', version=version)
 
+@app.route('/data')
+def get_data():
+    #return json.dumps(sensor_data_map) TODO
+    return json.dumps('{"room":"Wohnzimmer","temperature":"23.5","humidity":"43.5","iaq":"34","co2_ppm":"200"}')
+
 
 if __name__ == '__main__':
-    try:
-        mqtt_client = mqtt.Client()
-        mqtt_client.on_connect = on_connect
-        mqtt_client.on_message = on_message
+    mqtt_client = mqtt.Client()
+    mqtt_client.on_connect = on_connect
+    mqtt_client.on_message = on_message
 
-        print('Starting MQTT')
-        mqtt_client.connect(MQTT_SERVER, 1883, 60)
+    print('Starting MQTT')
+    mqtt_client.connect(MQTT_SERVER, 1883, 60)
 
-        # Non-blocking MQTT server
-        mqtt_client.loop_start()
+    # Non-blocking MQTT server
+    mqtt_client.loop_start()
         
-        # Start Webserver
-        app.run(debug=True, host='0.0.0.0')
+    # Start Webserver (blocking) - stopped via CTRL + C
+    app.run(debug=True, host='0.0.0.0')
 
-    except KeyboardInterrupt:
-        print('Shutdown program')
-    except (SystemError, OSError) as e:
-        print('Fatal error: ', e)
-    finally:
-        mqtt_client.loop_stop()
-        print('MQTT stopped - exit program')
-        exit(0)
+    mqtt_client.loop_stop()
+    print('MQTT stopped - exit program')
+    exit(0)
         
