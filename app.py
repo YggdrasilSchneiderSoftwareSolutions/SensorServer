@@ -12,7 +12,8 @@ sensor_data_map = {
     "Wohnzimmer": [],
     "Schlafzimmer": [],
     "Kinderzimmer": [],
-    "Büro": []
+    "Büro": [],
+    "Bad": []
 }
 
 # Object for holding measurement data
@@ -28,6 +29,8 @@ class BME680_Data:
         self.voc = voc
         self.iaq_accuracy = iaq_accuracy
         self.stab_status = stab_status
+        self.iaq_text = self.get_indoor_air_quality_text()
+        self.co2_text = self.get_co2_quality_level_text()
     
     # Define air quality. Reference: https://forum.iot-usergroup.de/t/indoor-air-quality-index/416/2
     def get_indoor_air_quality_text(self):
@@ -97,8 +100,8 @@ def index():
     version = '1.0'
     return render_template('index.html', version=version)
 
-@app.route('/data')
-def get_data():
+@app.route('/data/<room>')
+def get_data(room):
     #return json.dumps(sensor_data_map) TODO
     return json.dumps('{"room":"Wohnzimmer","temperature":"23.5","humidity":"43.5","iaq":"34","co2_ppm":"200"}')
 
@@ -109,15 +112,15 @@ if __name__ == '__main__':
     mqtt_client.on_message = on_message
 
     print('Starting MQTT')
-    mqtt_client.connect(MQTT_SERVER, 1883, 60)
+    #mqtt_client.connect(MQTT_SERVER, 1883, 60)
 
     # Non-blocking MQTT server
-    mqtt_client.loop_start()
+    #mqtt_client.loop_start()
         
     # Start Webserver (blocking) - stopped via CTRL + C
     app.run(debug=True, host='0.0.0.0')
 
-    mqtt_client.loop_stop()
+    #mqtt_client.loop_stop()
     print('MQTT stopped - exit program')
     exit(0)
         
